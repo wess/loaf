@@ -1,0 +1,29 @@
+[package]
+name = "loaf-sys"
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.82"
+license = "MIT"
+description = "Raw FFI bindings and native-library linkage for loaf (embedded Bun runtime)."
+repository = "https://github.com/wess/loaf"
+readme = "README.md"
+categories = ["external-ffi-bindings"]
+# Declares that this crate links the native `loaf` library, so Cargo forbids
+# linking two copies and exposes DEP_LOAF_* metadata to dependents.
+links = "loaf"
+build = "build.rs"
+
+[dependencies]
+
+[features]
+default = []
+
+# Require the native `libloaf` to be found and linked. Without it, build.rs
+# emits no link directives so the crate still `cargo check`s / builds as an
+# rlib on any platform (nothing resolves the extern symbols until something
+# actually links a binary).
+link = []
+
+# Build the `bun_embed` staticlib from a Bun fork checkout instead of consuming
+# a prebuilt libloaf. Requires Bun's toolchain; see docs/building.md.
+build-from-source = ["link"]

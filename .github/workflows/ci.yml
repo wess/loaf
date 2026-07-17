@@ -1,0 +1,65 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  # Gate: the safe API must build, lint, and pass its pure tests everywhere,
+  # with no native library present (loaf-sys supplies fallback symbols).
+  check:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+      - uses: Swatinem/rust-cache@v2
+      - name: Format
+        run: cargo fmt --all --check
+      - name: Clippy
+        run: cargo clippy --workspace --all-targets -- -D warnings
+      - name: Build (lib + examples)
+        run: cargo build --workspace --all-targets
+      - name: Test (pure)
+        run: cargo test --workspace
+
+  # End-to-end: build the native libloaf from the Bun fork and run the
+  # JS-executing smoke tests. Only meaningful where Bun's Rust build works
+  # (Linux x64 glibc today), and depends on Bun's full toolchain, so it does
+  # not gate merges yet.
+  native:
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: loaf
+      - name: Checkout Bun fork (embed layer)
+        uses: actions/checkout@v4
+        with:
+          repository: wess/bun
+          ref: loaf-embed
+          path: bun
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: oven-sh/setup-bun@v2
+      - name: Build libloaf (bun_embed)
+        working-directory: bun
+        run: |
+          # Bun's own dependency setup (JSC prebuilds, etc.) runs first; see
+          # the fork's CONTRIBUTING. Then:
+          cargo build -p bun_embed --release
+      - name: Run smoke tests against libloaf
+        working-directory: loaf
+        env:
+          LOAF_LIB_DIR: ${{ github.workspace }}/bun/target/release
+          LOAF_INCLUDE_DIR: ${{ github.workspace }}/bun/src/embed/include
+        run: cargo test --features link

@@ -1,0 +1,46 @@
+[package]
+name = "loaf"
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.82"
+license = "MIT"
+description = "Embed the Bun JavaScript/TypeScript runtime in Rust, the way mlua embeds Lua."
+repository = "https://github.com/wess/loaf"
+documentation = "https://docs.rs/loaf"
+readme = "README.md"
+keywords = ["bun", "javascript", "typescript", "runtime", "embed"]
+categories = ["api-bindings", "development-tools::ffi"]
+
+[workspace]
+members = ["sys"]
+
+[workspace.package]
+license = "MIT"
+repository = "https://github.com/wess/loaf"
+
+[dependencies]
+loaf-sys = { path = "sys", version = "0.1.0" }
+serde = { version = "1", optional = true, features = ["derive"] }
+
+[features]
+default = []
+
+# Require the native `libloaf` to be present and linked. Examples and the
+# JS-executing test suite depend on this; leaving it off lets the safe API
+# `cargo check` / `cargo build` (rlib) on any platform without the native lib.
+link = ["loaf-sys/link"]
+
+# Ask loaf-sys to build the `bun_embed` staticlib from a Bun fork checkout
+# instead of consuming a prebuilt libloaf. Slow; needs Bun's toolchain.
+build-from-source = ["link", "loaf-sys/build-from-source"]
+
+# serde-based conversion between JS values and Rust types (like mlua's
+# `serialize` feature).
+serde = ["dep:serde"]
+
+[dev-dependencies]
+
+# Examples compile everywhere (linking loaf-sys's fallback symbols when the
+# native library is absent) but only *do* anything when libloaf is linked;
+# run them with `--features link` and `LOAF_LIB_DIR` set. Without the native
+# library, `Runtime::new()` returns an error and the example exits cleanly.
