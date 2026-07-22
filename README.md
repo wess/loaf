@@ -131,3 +131,5 @@ independent runtimes on other threads for parallelism.
 ## License
 
 MIT © Wess Cope
+
+♥ [Sponsor this project](https://github.com/sponsors/wess)
